@@ -15,3 +15,4 @@ def create_gradcam(model, img_tensor, adversarial_example, device):
     gradcam_adv = torch.tensor(gradcam_adv).to(device)
 
     return gradcam_orig, gradcam_adv
+

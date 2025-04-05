@@ -7,7 +7,7 @@ import numpy as np
 from tqdm import tqdm
 from utils.distance import calculate_distance
 from utils.gradcam import create_gradcam
-from utils.advesarial import create_FGSM_example
+from utils.advesarial import create_FGSM_example, create_PGD_example
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -37,6 +37,8 @@ with open(config["imagenet_labels"]) as f:
 
 
 distances = {metric: {"orig": [], "adv": []} for metric in config["distance_metrics"]}
+model_mistake = 0
+adversarial_mistake = 0
 
 for classindex in tqdm(range(1000), desc="Class"):
   for file in range(5):
@@ -54,12 +56,16 @@ for classindex in tqdm(range(1000), desc="Class"):
 
     if config["adversarial_attack"] == "FGSM":
         adversarial_example, img_tensor_copy = create_FGSM_example(model, img_tensor, classindex, delta=config["delta"], device=device)
+    elif config["adversarial_attack"] == "PGD":
+        adversarial_example, img_tensor_copy = create_PGD_example(model, img_tensor, classindex, delta=config["delta"], device=device, iterations=config["iterations"], epsilon=config["epsilon"])
+
 
     idx_orig = model(img_tensor.unsqueeze(0)).argmax().item()
     
     # Only consider images that are correctly classified
     if idx_orig != classindex:
-      continue
+        model_mistake +=1
+        continue
 
     idx_adv = model(adversarial_example.unsqueeze(0)).argmax().item()
 
@@ -73,6 +79,7 @@ for classindex in tqdm(range(1000), desc="Class"):
         label_adv = imagenet_labels[idx_adv]
     
     if idx_orig == idx_adv:
+        adversarial_mistake +=1
         continue
     
     gradcam_orig, gradcam_adv = create_gradcam(model, img_tensor, adversarial_example, device)
@@ -119,6 +126,9 @@ for classindex in tqdm(range(1000), desc="Class"):
         with open(f"results/{config['results'][distance_metric]}", "a") as f:
             f.write(f"{classindex},{files[file]},{mean_orig},{mean_adv}\n")
 
+with open(f"results/mistakes.txt", "a") as f:
+    f.write(f"Model making a mistake on original image:{model_mistake}\n")
+    f.write(f"Model not fooled by adversarial image:{adversarial_mistake}")
 
 
 # Print results
