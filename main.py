@@ -6,7 +6,7 @@ import os
 import numpy as np
 from tqdm import tqdm
 from utils.distance import calculate_distance
-from utils.gradcam import create_gradcam
+from utils.gradcam import create_gradcam, create_gradcam_pp, create_smoothgrad
 from utils.advesarial import create_FGSM_example, create_PGD_example
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -82,7 +82,7 @@ for classindex in tqdm(range(1000), desc="Class"):
         adversarial_mistake +=1
         continue
     
-    gradcam_orig, gradcam_adv = create_gradcam(model, img_tensor, adversarial_example, device)
+    gradcam_orig, gradcam_adv = create_gradcam_pp(model, img_tensor, adversarial_example, device)
 
 
     num_noises = config["num_noise_vectors"]
@@ -123,10 +123,10 @@ for classindex in tqdm(range(1000), desc="Class"):
         distances[distance_metric]["adv"].append(mean_adv)
 
         # Write results to file
-        with open(f"results/{config['results'][distance_metric]}", "a") as f:
+        with open(f"results/pp_PGD/{config['results'][distance_metric]}", "a") as f:
             f.write(f"{classindex},{files[file]},{mean_orig},{mean_adv}\n")
 
-with open(f"results/mistakes.txt", "a") as f:
+with open(f"results/pp_PGD/mistakes.txt", "a") as f:
     f.write(f"Model making a mistake on original image:{model_mistake}\n")
     f.write(f"Model not fooled by adversarial image:{adversarial_mistake}")
 

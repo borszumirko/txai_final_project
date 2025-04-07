@@ -16,7 +16,10 @@
     "dataset_path": "Small-ImageNet-Validation-Dataset-1000-Classes/data",
     "imagenet_labels": "Small-ImageNet-Validation-Dataset-1000-Classes/imagenet.json",
     "results": {
+      "iou_65": "iou_65.txt",
+      "iou_70": "iou_70.txt",
       "iou_75": "iou_75.txt",
+      "iou_80": "iou_80.txt",
       "iou_90": "iou_90.txt",
       "iou_95": "iou_95.txt",
       "squared": "squared.txt",

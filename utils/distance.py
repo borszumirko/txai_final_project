@@ -25,7 +25,10 @@ def calculate_distance(saliency_map_1, saliency_map_2, distance_metric='cosine')
         "cosine": lambda: cosine_similarity(saliency_map_1, saliency_map_2),
         "squared": lambda: squared_difference(saliency_map_1, saliency_map_2),
         "absolute": lambda: absolute_difference(saliency_map_1, saliency_map_2),
+        "iou_65": lambda: calculate_iou(saliency_map_1, saliency_map_2, threshold=0.65),
+        "iou_70": lambda: calculate_iou(saliency_map_1, saliency_map_2, threshold=0.70),
         "iou_75": lambda: calculate_iou(saliency_map_1, saliency_map_2, threshold=0.75),
+        "iou_80": lambda: calculate_iou(saliency_map_1, saliency_map_2, threshold=0.80),
         "iou_90": lambda: calculate_iou(saliency_map_1, saliency_map_2, threshold=0.90),
         "iou_95": lambda: calculate_iou(saliency_map_1, saliency_map_2, threshold=0.95),
     }
