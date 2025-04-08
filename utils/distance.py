@@ -1,6 +1,11 @@
 import torch
 
 def calculate_iou(saliency_map_1, saliency_map_2, threshold=0.75):
+
+    # Normalize the saliency maps to the range [0, 1]
+    saliency_map_1 = normalize_tensor(saliency_map_1)
+    saliency_map_2 = normalize_tensor(saliency_map_2)
+
     binary_map_1 = (saliency_map_1 > threshold).int()
     binary_map_2 = (saliency_map_2 > threshold).int()
     
@@ -25,6 +30,7 @@ def calculate_distance(saliency_map_1, saliency_map_2, distance_metric='cosine')
         "cosine": lambda: cosine_similarity(saliency_map_1, saliency_map_2),
         "squared": lambda: squared_difference(saliency_map_1, saliency_map_2),
         "absolute": lambda: absolute_difference(saliency_map_1, saliency_map_2),
+        "iou_50": lambda: calculate_iou(saliency_map_1, saliency_map_2, threshold=0.50),
         "iou_65": lambda: calculate_iou(saliency_map_1, saliency_map_2, threshold=0.65),
         "iou_70": lambda: calculate_iou(saliency_map_1, saliency_map_2, threshold=0.70),
         "iou_75": lambda: calculate_iou(saliency_map_1, saliency_map_2, threshold=0.75),
@@ -37,3 +43,10 @@ def calculate_distance(saliency_map_1, saliency_map_2, distance_metric='cosine')
         raise ValueError(f"Unknown distance metric: {distance_metric}")
 
     return distance_functions[distance_metric]()  # Call the corresponding function
+
+
+def normalize_tensor(tensor):
+    min_val = tensor.min()
+    max_val = tensor.max()
+    normalized = (tensor - min_val) / (max_val - min_val + 1e-10) # Avoid divide by 0  
+    return normalized

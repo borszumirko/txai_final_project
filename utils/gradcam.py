@@ -1,5 +1,6 @@
 import torch
-from pytorch_grad_cam import GradCAM, GradCAMPlusPlus
+from pytorch_grad_cam import GradCAM, GradCAMPlusPlus, EigenCAM
+from captum.attr import LRP
 
 def create_gradcam(model, img_tensor, adversarial_example, device):
     # Grad-CAM for the original image
@@ -33,6 +34,49 @@ def create_gradcam_pp(model, img_tensor, adversarial_example, device):
     return gradcam_pp_orig, gradcam_pp_adv
 
 
+def create_eigencam(model, img_tensor, adversarial_example, device):
+    
+    eigencam = EigenCAM(model=model, target_layers=[model.layer4[0]])
+    eigencam_orig = eigencam(input_tensor=img_tensor.unsqueeze(0))
+    eigencam_orig = eigencam_orig[0, :]
+
+    eigencam_adv = eigencam(input_tensor=adversarial_example.unsqueeze(0))
+    eigencam_adv = eigencam_adv[0, :]
+
+    eigencam_orig = torch.tensor(eigencam_orig).to(device)
+    eigencam_adv = torch.tensor(eigencam_adv).to(device)
+
+    return eigencam_orig, eigencam_adv
+
+
+def create_lrp(model, img_tensor, adversarial_example, device, pred_orig, pred_adv):
+    
+    lrp = LRP(model)
+    
+    attributions_orig = lrp.attribute(img_tensor.unsqueeze(0), target=pred_orig).to(device)
+    attributions_adv = lrp.attribute(adversarial_example.unsqueeze(0), pred_adv).to(device)
+
+    attributions_orig = attributions_orig[0, :]
+    attributions_adv = attributions_adv[0, :]
+    
+    return attributions_orig, attributions_adv
+
+
+def calculate_saliency(model, img_tensor, adversarial_example, device, pred_orig, pred_adv, heatmap_type='gradcam'):
+    saliency_functions = {
+        "gradcam": lambda: create_gradcam(model, img_tensor, adversarial_example, device),
+        "gradcam++": lambda: create_gradcam_pp(model, img_tensor, adversarial_example, device),
+        "eigen": lambda: create_eigencam(model, img_tensor, adversarial_example, device),
+        "lrp": lambda: create_lrp(model, img_tensor, adversarial_example, device, pred_orig, pred_adv),
+    }
+
+    if heatmap_type not in saliency_functions:
+        raise ValueError(f"Unknown heatmap: {heatmap_type}")
+
+    return saliency_functions[heatmap_type]()
+
+
+'''
 def create_smoothgrad(model, img_tensor, adversarial_example, classindex, device):
     
     smooth_orig = compute_smooth_gradient(model, img_tensor, classindex, delta=0.2, samples=10, device=device)
@@ -70,3 +114,5 @@ def compute_smoothgrad(model, img_tensor, classindex, delta, samples, device):
         smooth_grad = smooth_grad.max(dim=0)[0]
 
     return smoothgrad
+
+'''
