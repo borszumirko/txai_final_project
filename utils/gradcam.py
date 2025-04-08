@@ -55,7 +55,7 @@ def create_lrp(model, img_tensor, adversarial_example, device, pred_orig, pred_a
     
     attributions_orig = lrp.attribute(img_tensor.unsqueeze(0), target=pred_orig).to(device)
     attributions_adv = lrp.attribute(adversarial_example.unsqueeze(0), pred_adv).to(device)
-
+    
     attributions_orig = attributions_orig[0, :]
     attributions_adv = attributions_adv[0, :]
     

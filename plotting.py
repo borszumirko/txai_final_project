@@ -6,7 +6,7 @@ import torchvision.transforms as T
 import PIL
 import os
 import json
-from utils.advesarial import create_FGSM_example, perform_pgd_attack
+from utils.advesarial import create_FGSM_example, create_PGD_example
 from utils.gradcam import create_gradcam, create_gradcam_pp, create_eigencam, create_lrp
 from utils.distance import normalize_tensor
 
@@ -26,7 +26,7 @@ print(f"Using device: {device}")
 with open("config.json", "r") as f:
     config = json.load(f)
 
-model = torch.hub.load('pytorch/vision:v0.6.0', config["model"], pretrained=True).to(device)
+model = torch.hub.load('pytorch/vision:v0.6.0', config["model"], weights="ResNet50_Weights.IMAGENET1K_V1").to(device)
 
 # Prerocess for resnet50
 img_preprocessing = T.Compose([
@@ -57,8 +57,8 @@ if not img.mode == 'RGB':
 
 img_tensor = img_preprocessing(img).to(device)
 
-# adv_example, orig_copy = create_PGD_example(model, img_tensor, classindex, delta=config["delta"], device=device, iterations=config["iterations"], epsilon=config["epsilon"])
-adv_example, orig_copy = perform_pgd_attack(model, img_tensor, classindex, device)
+adv_example, orig_copy = create_PGD_example(model, img_tensor, classindex, device, config["PGD"]["alpha"],config["PGD"]["delta"], config["PGD"]["iterations"] )
+# adv_example, orig_copy = perform_pgd_attack(model, img_tensor, classindex, device)
 # adv_example, orig_copy = create_FGSM_example(model, img_tensor, classindex, config["delta"], device)
 
 
