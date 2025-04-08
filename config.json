@@ -1,5 +1,5 @@
 {
-    "distance_metrics": ["cosine", "squared", "absolute", "iou_95", "iou_75", "iou_90"],
+    "distance_metrics": ["cosine", "squared", "absolute", "iou_50", "iou_75", "iou_90"],
     "num_noise_vectors": 10,
     "noise_level": 0.1,
     "delta": 0.01,
@@ -12,7 +12,7 @@
       "iterations": 10
     },
     "adversarial_attack": "PGD",
-    "saliency_map": ["gradcam", "gradcam++", "lrp", "eigen"],
+    "saliency_map": ["gradcam", "gradcam++", "eigen"],
     "model": "resnet50",
     "preprocessing": {
       "center_crop": 224,
