@@ -12,7 +12,7 @@
       "iterations": 10
     },
     "adversarial_attack": "PGD",
-    "saliency_map": ["gradcam", "gradcam++", "eigen"],
+    "saliency_map": ["layer"],
     "model": "resnet50",
     "preprocessing": {
       "center_crop": 224,

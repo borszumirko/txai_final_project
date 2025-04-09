@@ -155,9 +155,9 @@ def run_experiment(config_file, device):
                     with open(f"results/{config['adversarial_attack']}_{heatmap_type}_{config['results'][distance_metric]}", "a") as f:
                         f.write(f"{classindex},{files[file]},{mean_orig},{mean_adv}\n")
 
-    with open(f"results/pp_PGD/mistakes.txt", "a") as f:
+    '''with open(f"results/mistakes.txt", "a") as f:
         f.write(f"Model making a mistake on original image:{model_mistake}\n")
-        f.write(f"Model not fooled by adversarial image:{adversarial_mistake}")
+        f.write(f"Model not fooled by adversarial image:{adversarial_mistake}")'''
 
     # Print results
     for distance_metric, values in distances.items():
@@ -167,3 +167,4 @@ def run_experiment(config_file, device):
         print(f"Mean difference for original image: {mean_orig}")
         print(f"Mean difference for adversarial example: {mean_adv}")
         print("\n")
+    print(f"Model making a mistake on original image:{model_mistake}\nModel not fooled by adversarial image:{adversarial_mistake}")

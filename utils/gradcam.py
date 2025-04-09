@@ -1,6 +1,6 @@
 import torch
-from pytorch_grad_cam import GradCAM, GradCAMPlusPlus, EigenCAM
-from captum.attr import LRP
+from pytorch_grad_cam import GradCAM, GradCAMPlusPlus, EigenCAM, LayerCAM
+#from captum.attr import LRP
 
 def create_gradcam(model, img_tensor, adversarial_example, device):
     # Grad-CAM for the original image
@@ -49,7 +49,7 @@ def create_eigencam(model, img_tensor, adversarial_example, device):
     return eigencam_orig, eigencam_adv
 
 
-def create_lrp(model, img_tensor, adversarial_example, device, pred_orig, pred_adv):
+'''def create_lrp(model, img_tensor, adversarial_example, device, pred_orig, pred_adv):
     
     lrp = LRP(model)
     
@@ -58,8 +58,22 @@ def create_lrp(model, img_tensor, adversarial_example, device, pred_orig, pred_a
     
     attributions_orig = attributions_orig[0, :]
     attributions_adv = attributions_adv[0, :]
+
+    return attributions_orig, attributions_adv'''
+
+def create_layercam(model, img_tensor, adversarial_example, device):
     
-    return attributions_orig, attributions_adv
+    layercam = LayerCAM(model=model, target_layers=[model.layer4[0]])
+    layercam_orig = layercam(input_tensor=img_tensor.unsqueeze(0))
+    layercam_orig = layercam_orig[0, :]
+
+    layercam_adv = layercam(input_tensor=adversarial_example.unsqueeze(0))
+    layercam_adv = layercam_adv[0, :]
+
+    layercam_orig = torch.tensor(layercam_orig).to(device)
+    layercam_adv = torch.tensor(layercam_adv).to(device)
+
+    return layercam_orig, layercam_adv
 
 
 def calculate_saliency(model, img_tensor, adversarial_example, device, pred_orig, pred_adv, heatmap_type='gradcam'):
@@ -67,6 +81,7 @@ def calculate_saliency(model, img_tensor, adversarial_example, device, pred_orig
         "gradcam": lambda: create_gradcam(model, img_tensor, adversarial_example, device),
         "gradcam++": lambda: create_gradcam_pp(model, img_tensor, adversarial_example, device),
         "eigen": lambda: create_eigencam(model, img_tensor, adversarial_example, device),
+        "layer": lambda: create_layercam(model, img_tensor, adversarial_example, device),
         "lrp": lambda: create_lrp(model, img_tensor, adversarial_example, device, pred_orig, pred_adv),
     }
 
