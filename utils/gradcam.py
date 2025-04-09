@@ -1,6 +1,6 @@
 import torch
 from pytorch_grad_cam import GradCAM, GradCAMPlusPlus, EigenCAM, LayerCAM
-#from captum.attr import LRP
+from captum.attr import LRP
 
 def create_gradcam(model, img_tensor, adversarial_example, device):
     # Grad-CAM for the original image
@@ -49,7 +49,7 @@ def create_eigencam(model, img_tensor, adversarial_example, device):
     return eigencam_orig, eigencam_adv
 
 
-'''def create_lrp(model, img_tensor, adversarial_example, device, pred_orig, pred_adv):
+def create_lrp(model, img_tensor, adversarial_example, device, pred_orig, pred_adv):
     
     lrp = LRP(model)
     
@@ -59,7 +59,7 @@ def create_eigencam(model, img_tensor, adversarial_example, device):
     attributions_orig = attributions_orig[0, :]
     attributions_adv = attributions_adv[0, :]
 
-    return attributions_orig, attributions_adv'''
+    return attributions_orig, attributions_adv
 
 def create_layercam(model, img_tensor, adversarial_example, device):
     
