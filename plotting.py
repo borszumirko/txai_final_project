@@ -14,6 +14,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # from tutorial code
 def invert_transform(img_tensor):
+    img_tensor = img_tensor.cpu()
     m = torch.Tensor([0.485, 0.456, 0.406]).unsqueeze(-1).unsqueeze(-1)
     s = torch.Tensor([0.229, 0.224, 0.225]).unsqueeze(-1).unsqueeze(-1)
     img_numpy = (s * img_tensor + m) * 255
@@ -45,7 +46,7 @@ def load_img(path):
 with open(config["imagenet_labels"]) as f:
     imagenet_labels = json.load(f)
 
-classindex = 18
+classindex = 355
 file = 0
 directory = f"{config['dataset_path']}/{classindex}"
 files = sorted(os.listdir(directory))
@@ -62,7 +63,7 @@ adv_example, orig_copy = create_PGD_example(model, img_tensor, classindex, devic
 # adv_example, orig_copy = create_FGSM_example(model, img_tensor, classindex, config["delta"], device)
 
 
-
+model.eval()
 pred_orig = torch.argmax(model(img_tensor.unsqueeze(0).to(device)))
 pred_adv = torch.argmax(model(adv_example.unsqueeze(0).to(device)))
 
@@ -72,6 +73,13 @@ gradcampp_orig, gardcampp_adv = create_gradcam_pp(model, img_tensor, adv_example
 eigencam_orig, eigencam_adv = create_eigencam(model, img_tensor, adv_example, device)
 lrp_orig, lrp_adv = create_lrp(model, img_tensor, adv_example, device, pred_orig, pred_adv)
 
+noise_vector = torch.randn_like(img_tensor, device=device) * 0.3
+noisy_orig = orig_copy + noise_vector
+noisy_adv = adv_example + noise_vector
+noisy_gradcam_orig, noisy_gradcam_adv = create_gradcam(model, noisy_orig, noisy_adv, device)
+
+pred_noisy_orig = torch.argmax(model(noisy_orig.unsqueeze(0).to(device)))
+pred_noisy_adv = torch.argmax(model(noisy_adv.unsqueeze(0).to(device)))
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -95,20 +103,22 @@ def display_saliency_visuals(original_img_tensor, adversarial_img_tensor, salien
 
     # Create a figure with subplots
     fig, axs = plt.subplots(len(saliency_maps), 4, figsize=(20, 5 * (len(saliency_maps))))
+    if len(saliency_maps) == 1:
+        axs = np.expand_dims(axs, axis=0)
 
     for i, (saliency_map_original, saliency_map_adv) in enumerate(saliency_maps):
-        saliency_map_original = saliency_map_original.detach()
-        saliency_map_adv = saliency_map_adv.detach()
+        saliency_map_original = saliency_map_original.detach().cpu().numpy()
+        saliency_map_adv = saliency_map_adv.detach().cpu().numpy()
         
         # Plot the original image
         axs[i, 0].imshow(original_img)
         axs[i, 0].axis('off')
-        axs[i, 0].set_title(f"Original Image, pred: {pred_orig}")
+        axs[i, 0].set_title(f"Original Image, pred: {imagenet_labels[pred_orig]}")
         
         # Plot the adversarial image
         axs[i, 1].imshow(adversarial_img)
         axs[i, 1].axis('off')
-        axs[i, 1].set_title(f"Adversarial Image, pred:{pred_adv}")
+        axs[i, 1].set_title(f"Adversarial Image, pred:{imagenet_labels[pred_adv]}")
 
         # Overlay the saliency map on the original image
         axs[i, 2].imshow(original_img)
@@ -123,14 +133,16 @@ def display_saliency_visuals(original_img_tensor, adversarial_img_tensor, salien
         axs[i, 3].set_title(f"{titles[i]} (Adversarial)")
 
     plt.tight_layout()
-    plt.show()
+    plt.savefig("new_gradcam_visuals_0.3.png")
+    plt.close()
 
 
-# display_saliency_visuals(
-#     img_tensor, adv_example,
-#     saliency_maps=[(gradcam_orig, gradcam_adv), (gradcampp_orig, gardcampp_adv), (eigencam_orig, eigencam_adv)],
-#     titles=["GradCAM", "GradCAM++", "EigenCam"]
-# )
+
+display_saliency_visuals(
+     img_tensor, adv_example,
+     saliency_maps=[(gradcam_orig, gradcam_adv), (noisy_gradcam_orig, noisy_gradcam_adv)],
+     titles=["GradCAM", "Noisy GradCAM"]
+ )
 
 # from https://captum.ai/tutorials/TorchVision_Interpret
 _ = viz.visualize_image_attr_multiple(np.transpose(lrp_orig.squeeze().cpu().detach().numpy(), (1,2,0)),
