@@ -30,6 +30,9 @@ best_overall_threshold = 0
 best_metric = ""
 for adversarial in adversarials:
     for saliency in saliency_methods:
+        best_overall_f1 = 0
+        best_overall_threshold = 0
+        best_metric = ""
         for distance_metric in config["distance_metrics"]:
             orig, adv = extract_last_two_numbers(f"results/{adversarial}_{saliency}_{distance_metric}.txt")
             if distance_metric  not in ["squared", "absolute"]:
