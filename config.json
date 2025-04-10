@@ -1,7 +1,7 @@
 {
     "distance_metrics": ["cosine", "squared", "absolute", "iou_50", "iou_75", "iou_90"],
     "num_noise_vectors": 10,
-    "noise_level": 0.1,
+    "noise_level": 0.2,
     "delta": 0.01,
     "max_delta": 0.1,
     

@@ -1,5 +1,5 @@
 import torch
-from experiment import run_experiment
+from experiment import run_experiment, label_experiment
 
 
 def main():
@@ -10,7 +10,8 @@ def main():
 
     config_filename = "config.json"
     
-    run_experiment(config_filename, device)
+    # run_experiment(config_filename, device)
+    label_experiment(device, config_filename)
 
 if __name__ == "__main__":
     main()

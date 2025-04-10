@@ -167,3 +167,136 @@ def run_experiment(config_file, device):
         print(f"Mean difference for original image: {mean_orig}")
         print(f"Mean difference for adversarial example: {mean_adv}")
         print("\n")
+
+
+def label_experiment(device, config_file):
+    with open(config_file, "r") as f:
+        config = json.load(f)
+
+    model = torch.hub.load('pytorch/vision:v0.6.0', config["model"], weights="ResNet50_Weights.IMAGENET1K_V1").to(device)
+    # Prerocess for resnet50
+    # From tutorial code
+    img_preprocessing = T.Compose([
+        T.CenterCrop(config["preprocessing"]["center_crop"]),
+        T.ToTensor(),
+        T.Normalize(mean=config["preprocessing"]["mean"], std=config["preprocessing"]["std"])
+    ])
+
+    # Load and preprocess image
+    def load_img(path):
+        image = PIL.Image.open(path)
+        return image
+
+    model_mistake = 0
+    FGSM_mistake = 0
+    PGD_mistake = 0
+
+    label_changes = {
+                    "orig_FGSM": [],
+                    "orig_PGD": [],
+                    "FGSM": [],
+                    "PGD": [],
+                    }
+
+    for classindex in tqdm(range(1000), desc="Class"):
+        for file in tqdm(range(5), desc="file", leave=False):
+            directory = f"{config['dataset_path']}/{classindex}"
+            files = sorted(os.listdir(directory))
+
+            img = load_img(f'{directory}/{files[file]}')
+
+            if not img.mode == 'RGB':
+                img = img.convert('RGB')
+
+            img_tensor = img_preprocessing(img).to(device)
+
+            model.eval()
+
+            FGSM_example, img_tensor_copy = create_FGSM_example(model, img_tensor, classindex, delta=config["delta"], device=device)
+            
+            PGD_example, img_tensor_copy = create_PGD_example(model, img_tensor, classindex, device, config["PGD"]["alpha"],config["PGD"]["delta"], config["PGD"]["iterations"] )
+
+            pred_orig =  model(img_tensor.unsqueeze(0)).argmax()
+            idx_orig = pred_orig.item()
+            
+            if idx_orig != classindex:
+                model_mistake +=1
+                continue
+
+            pred_FGSM = model(FGSM_example.unsqueeze(0)).argmax()
+            idx_FGSM = pred_FGSM.item()
+            pred_PGD = model(PGD_example.unsqueeze(0)).argmax()
+            idx_PGD = pred_PGD.item()
+            
+            delta = config["delta"]
+            while classindex == idx_FGSM and delta < config["max_delta"]:
+                delta += 0.01
+                FGSM_example = img_tensor_copy + delta * torch.sign(img_tensor.grad)
+                idx_FGSM = model(img_tensor.unsqueeze(0)).argmax().item()
+            
+            FGSM_successful = True
+            PGD_successful = True
+
+            if idx_orig == idx_FGSM:
+                FGSM_mistake +=1
+                FGSM_successful = False
+
+            if idx_orig == idx_PGD:
+                PGD_mistake +=1
+                PGD_successful = False
+            
+            if not (FGSM_successful and PGD_successful):
+                continue
+
+            num_noises = config["num_noise_vectors"]
+
+            noise_vectors = [torch.randn_like(img_tensor, device=device) * config["noise_level"] for _ in range(num_noises)]
+
+            label_change_rate = 0.0
+            label_change_rate_FGSM = 0.0
+            label_change_rate_PGD = 0.0
+
+            for noise in noise_vectors:
+
+                noisy_orig = (img_tensor + noise).to(device)
+                noisy_FGSM = (FGSM_example + noise).to(device)
+                noisy_PGD = (PGD_example + noise).to(device)
+
+                idx_orig_noisy = model(noisy_orig.unsqueeze(0)).argmax().item()
+                
+                if idx_orig_noisy != idx_orig:
+                    label_change_rate +=1
+
+                if FGSM_successful:
+                    idx_FGSM_noisy = model(noisy_FGSM.unsqueeze(0)).argmax().item()
+                    if idx_FGSM_noisy != idx_FGSM:
+                        label_change_rate_FGSM += 1
+                
+                if PGD_successful:
+                    idx_PGD_noisy = model(noisy_PGD.unsqueeze(0)).argmax().item()
+                    if idx_PGD_noisy != idx_PGD:
+                        label_change_rate_PGD += 1
+            
+            if FGSM_successful:
+                with open("results/FGSM_label_change.txt", "a") as f:
+                    f.write(f"{label_change_rate},{label_change_rate_FGSM / num_noises}")
+
+            if PGD_successful:
+                with open("results/PGD_label_change.txt", "a") as f:
+                    f.write(f"{label_change_rate},{label_change_rate_PGD / num_noises}")
+
+
+
+
+
+
+                
+
+                
+                
+            
+
+
+
+
+            

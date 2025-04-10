@@ -1,6 +1,22 @@
 import torch
-from pytorch_grad_cam import GradCAM, GradCAMPlusPlus, EigenCAM
+from pytorch_grad_cam import GradCAM, GradCAMPlusPlus, EigenCAM, ScoreCAM, LayerCAM
 from captum.attr import LRP
+
+# General function for calculating a GradCam variant
+def create_cam(CamClass, model, img_tensor, adversarial_example, device):
+    cam = CamClass(model=model, target_layers=[model.layer4[2]])
+    cam_orig = cam(input_tensor=img_tensor.unsqueeze(0))
+    cam_orig = cam_orig[0, :]
+
+    cam_adv = cam(input_tensor=adversarial_example.unsqueeze(0))
+    cam_adv = cam_adv[0, :]
+
+    cam_orig = torch.tensor(cam_orig).to(device)
+    cam_adv = torch.tensor(cam_adv).to(device)
+
+    return cam_orig, cam_adv
+
+
 
 def create_gradcam(model, img_tensor, adversarial_example, device):
     # Grad-CAM for the original image
