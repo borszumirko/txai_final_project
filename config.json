@@ -11,8 +11,8 @@
       "delta": 0.1,
       "iterations": 10
     },
-    "adversarial_attack": "PGD",
-    "saliency_map": ["gradcam", "gradcam++", "eigen"],
+    "adversarial_attack": "FGSM",
+    "saliency_map": ["layer"],
     "model": "resnet50",
     "preprocessing": {
       "center_crop": 224,
