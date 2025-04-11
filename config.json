@@ -12,7 +12,7 @@
       "iterations": 10
     },
     "adversarial_attack": "FGSM",
-    "saliency_map": ["layer"],
+    "saliency_map": ["gradcam", "gradcam++", "eigen"],
     "model": "resnet50",
     "preprocessing": {
       "center_crop": 224,

@@ -56,6 +56,7 @@ def run_experiment(config_file, device):
 
     for classindex in tqdm(range(1000), desc="Class"):
         for file in tqdm(range(5), desc="file", leave=False):
+    
             directory = f"{config['dataset_path']}/{classindex}"
             files = sorted(os.listdir(directory))
 

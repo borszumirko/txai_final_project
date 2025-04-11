@@ -10,8 +10,8 @@ def main():
 
     config_filename = "config.json"
     
-    # run_experiment(config_filename, device)
-    label_experiment(device, config_filename)
+    run_experiment(config_filename, device)
+    # label_experiment(device, config_filename)
 
 if __name__ == "__main__":
     main()
