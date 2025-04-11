@@ -14,6 +14,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # from tutorial code
 def invert_transform(img_tensor):
+    img_tensor = img_tensor.cpu()
     m = torch.Tensor([0.485, 0.456, 0.406]).unsqueeze(-1).unsqueeze(-1)
     s = torch.Tensor([0.229, 0.224, 0.225]).unsqueeze(-1).unsqueeze(-1)
     img_numpy = (s * img_tensor + m) * 255
@@ -45,8 +46,8 @@ def load_img(path):
 with open(config["imagenet_labels"]) as f:
     imagenet_labels = json.load(f)
 
-classindex = 142
-file = 4
+classindex = 355
+file = 0
 directory = f"{config['dataset_path']}/{classindex}"
 files = sorted(os.listdir(directory))
 
@@ -62,7 +63,7 @@ adv_example, orig_copy = create_PGD_example(model, img_tensor, classindex, devic
 # adv_example, orig_copy = create_FGSM_example(model, img_tensor, classindex, config["delta"], device)
 
 
-
+model.eval()
 pred_orig = torch.argmax(model(img_tensor.unsqueeze(0).to(device)))
 pred_adv = torch.argmax(model(adv_example.unsqueeze(0).to(device)))
 
@@ -77,6 +78,13 @@ lrp_orig, lrp_adv = create_lrp(model, img_tensor, adv_example, device, pred_orig
 print("Expected class label:", imagenet_labels[classindex])
 print("Predicted label:", imagenet_labels[pred_orig.item()])
 
+noise_vector = torch.randn_like(img_tensor, device=device) * 0.3
+noisy_orig = orig_copy + noise_vector
+noisy_adv = adv_example + noise_vector
+noisy_gradcam_orig, noisy_gradcam_adv = create_gradcam(model, noisy_orig, noisy_adv, device)
+
+pred_noisy_orig = torch.argmax(model(noisy_orig.unsqueeze(0).to(device)))
+pred_noisy_adv = torch.argmax(model(noisy_adv.unsqueeze(0).to(device)))
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -93,10 +101,12 @@ def display_saliency_visuals(original_img_tensor, adversarial_img_tensor, salien
     adversarial_img = invert_transform(adversarial_img_tensor)
 
     fig, axs = plt.subplots(len(saliency_maps), 4, figsize=(20, 5 * len(saliency_maps)))
+    if len(saliency_maps) == 1:
+        axs = np.expand_dims(axs, axis=0)
 
     for i, (saliency_map_original, saliency_map_adv) in enumerate(saliency_maps):
-        saliency_map_original = saliency_map_original.detach()
-        saliency_map_adv = saliency_map_adv.detach()
+        saliency_map_original = saliency_map_original.detach().cpu().numpy()
+        saliency_map_adv = saliency_map_adv.detach().cpu().numpy()
 
         # Empty positions: row 0 cols 0-1, and row 2 cols 0-1
         if i == 0:
@@ -115,11 +125,11 @@ def display_saliency_visuals(original_img_tensor, adversarial_img_tensor, salien
         elif i == 1:
             axs[i, 0].imshow(original_img)
             axs[i, 0].axis('off')
-            axs[i, 0].set_title(f"Original Image\npred: {imagenet_labels[pred_orig.item()]}")
+            axs[i, 0].set_title(f"Original Image\npred: {imagenet_labels[imagenet_labels[pred_orig].item()]}")
 
             axs[i, 1].imshow(adversarial_img)
             axs[i, 1].axis('off')
-            axs[i, 1].set_title(f"Adversarial Image\npred: {imagenet_labels[pred_adv.item()]}")
+            axs[i, 1].set_title(f"Adversarial Image\npred: {imagenet_labels[imagenet_labels[pred_adv].item()]}")
 
             axs[i, 2].imshow(original_img)
             axs[i, 2].imshow(saliency_map_original, cmap='jet', alpha=0.5)
@@ -163,9 +173,16 @@ def display_saliency_visuals(original_img_tensor, adversarial_img_tensor, salien
     plt.tight_layout()
     plt.savefig("images/cam_visuals.pdf", format="pdf")
     plt.savefig("images/cam_visuals.png", format="png")
-    plt.show()
+    plt.savefig("new_gradcam_visuals_0.3.png")
+    plt.close()
 
 
+
+display_saliency_visuals(
+     img_tensor, adv_example,
+     saliency_maps=[(gradcam_orig, gradcam_adv), (noisy_gradcam_orig, noisy_gradcam_adv)],
+     titles=["GradCAM", "Noisy GradCAM"]
+ )
 
 display_saliency_visuals(
     img_tensor, adv_example,
