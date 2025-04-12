@@ -3,6 +3,7 @@ import json
 import matplotlib.pyplot as plt
 from scipy.stats import entropy, wasserstein_distance
 from sklearn.metrics import roc_curve, f1_score
+from sklearn.model_selection import train_test_split
 import csv
 
 with open("config.json", "r") as f:
@@ -25,106 +26,68 @@ adversarials = ["FGSM", "PGD"]
 saliency_methods = ["gradcam", "gradcam++", "eigen", "layer"]
 results = []
 best_results = []
-best_overall_f1 = 0
-best_overall_threshold = 0
-best_metric = ""
+
+
 for adversarial in adversarials:
     for saliency in saliency_methods:
-        best_overall_f1 = 0
-        best_overall_threshold = 0
+        best_test_f1 = 0
+        best_test_threshold = 0
         best_metric = ""
+        best_validation_f1 = 0
+
         for distance_metric in config["distance_metrics"]:
+            #Read the distance from the txt file
             orig, adv = extract_last_two_numbers(f"results/{adversarial}_{saliency}_{distance_metric}.txt")
+            #Make sure that all metrics are aligned
             if distance_metric  not in ["squared", "absolute"]:
                     orig = [-x for x in orig]
                     adv = [-x for x in adv]
+            
+            #Make the y and x lists
+            y = np.array([0]*len(orig) + [1]*len(adv))
+            x = np.concatenate([orig, adv])
+            #Test and validation split
+            x_test, x_val, y_test, y_val = train_test_split(x, y, test_size=0.2, random_state=42)
+            
+            #ROC values and thresholds
+            fpr, tpr, thresholds = roc_curve(y_test, x_test)
 
-            y_true = np.array([0]*len(orig) + [1]*len(adv))
-            y_scores = np.concatenate([orig, adv])
-            fpr, tpr, thresholds = roc_curve(y_true, y_scores)
             best_f1 = 0
             best_threshold = 0
+
+            #Get the best threshold for the metric with respect to f1 score on test set
             for t in thresholds:
                 if np.isinf(t):
                     continue
-                preds = (y_scores >= t).astype(int)
-                f1 = f1_score(y_true, preds)
+                preds = (x_test >= t).astype(int)
+                f1 = f1_score(y_test, preds)
                 if f1 > best_f1:
                     best_f1 = f1
                     best_threshold = t
-            results.append({
-                "Adversarial Method": adversarial,
-                "Saliency Method": saliency,
-                "Distance Metric": distance_metric,
-                "Best F1 Score": best_f1,
-                "Best Threshold": best_threshold
-            })
-            if best_f1 > best_overall_f1:
-                best_overall_f1 = best_f1
+            
+            #Calculate f1 score on validation set with the same threshold
+            val_preds = (x_val >= best_threshold).astype(int)
+            f1_val = f1_score(y_val, val_preds)
+
+            #Check if this metric has the best validation f1 score
+            if f1_val > best_validation_f1:
+                best_validation_f1 = f1_val
                 best_metric = distance_metric
-                best_overall_threshold = best_threshold
-        best_results.append({
+                best_test_threshold = best_threshold
+                best_test_f1 = best_f1
+
+        results.append({
                 "Adversarial Method": adversarial,
                 "Saliency Method": saliency,
                 "Best Distance Metric": best_metric,
-                "Best F1 Score": best_overall_f1,
-                "Best Threshold": best_overall_threshold
+                "Best Test F1 Score": best_test_f1,
+                "Best Threshold": best_test_threshold,
+                "Validation F1 Score": best_validation_f1
             })
 
-#print(f"best metric: {best_metric}, f1: {best_overall_f1}, threshold: {best_overall_threshold}")
-output_file = "threshold_results.csv"
+output_file = "validation_threshold_results.csv"
 with open(output_file, mode='w', newline='') as file:
-    writer = csv.DictWriter(file, fieldnames=["Adversarial Method", "Saliency Method", "Distance Metric", "Best F1 Score", "Best Threshold"])
+    writer = csv.DictWriter(file, fieldnames=["Adversarial Method", "Saliency Method", "Best Distance Metric", "Best Test F1 Score", "Best Threshold", "Validation F1 Score"])
     writer.writeheader()
     writer.writerows(results)
-output_file_best = "best_metrics_threshold.csv"
-with open(output_file_best, mode='w', newline='') as file:
-    writer = csv.DictWriter(file, fieldnames=["Adversarial Method", "Saliency Method", "Best Distance Metric", "Best F1 Score", "Best Threshold"])
-    writer.writeheader()
-    writer.writerows(best_results)
 
-'''
-plt.figure()
-plt.hist(orig, bins=60, alpha=0.5, label="original", color="blue")
-plt.hist(adv, bins=60, alpha=0.5, label="Adversarial", color="red")
-plt.xlabel("Distance Value")
-plt.ylabel("Frequency")
-plt.title(f"saliency map: saliency, distance: metric")
-plt.legend()
-plt.savefig("results/thresholding.png")
-plt.close()
-
-epsilon = 1e-8
-orig = np.array(orig, dtype=np.float32)
-adv = np.array(adv, dtype=np.float32)
-orig = orig + epsilon
-adv = adv + epsilon
-orig /= np.sum(orig)
-adv /= np.sum(adv)
-
-kl = entropy(pk=orig, qk=adv)
-wd = wasserstein_distance(orig, adv)
-print(f"KL: {kl}, WD: {wd}")
-
-
-print(f"orig length: {len(orig)}, adv: {len(adv)}")
-y_true = np.array([0]*len(orig) + [1]*len(adv))
-y_scores = np.concatenate([orig, adv])
-print(f"y_true length: {len(y_true)}, y_scores: {len(y_scores)}")
-fpr, tpr, thresholds = roc_curve(y_true, y_scores)
-
-
-print(f"{fpr}\n, {tpr}\n, {thresholds}\n")
-
-best_f1 = 0
-best_threshold = 0
-
-for t in thresholds:
-    preds = (y_scores >= t).astype(int)
-    f1 = f1_score(y_true, preds)
-    if f1 > best_f1:
-        best_f1 = f1
-        best_threshold = t
-
-print(f"Best threshold by F1 score: {best_threshold:.4f}")
-print(f"Best F1 score: {best_f1:.4f}")'''
