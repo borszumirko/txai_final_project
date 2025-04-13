@@ -31,6 +31,8 @@ The config file controls experiment settings. Here's a breakdown of the paramete
   - **`alpha`**: Step size per iteration.
   - **`delta`**: Maximum allowed perturbation.
   - **`iterations`**: Number of iterations for the PGD attack.
+- **`delta`**, **`max_delta`**: Parameters for FGSM.
+
 
 ---
 
@@ -58,7 +60,6 @@ The config file controls experiment settings. Here's a breakdown of the paramete
 
 - **`num_noise_vectors`**: Number of noisy samples generated per image.
 - **`noise_level`**: Scale noise sampled from normal distribution
-- **`delta`**, **`max_delta`**: Noise parameters for FGSM and PGD.
 
 ---
 
