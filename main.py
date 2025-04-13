@@ -1,5 +1,5 @@
 import torch
-from experiment import run_experiment, label_experiment
+from experiment.experiment import run_experiment, label_experiment
 
 
 def main():
